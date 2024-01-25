@@ -1,6 +1,8 @@
 package h02;
 
+import fopbot.Direction;
 import fopbot.Robot;
+import fopbot.World;
 
 import static org.tudalgo.algoutils.student.Student.crash;
 
@@ -15,8 +17,11 @@ public class ControlCenter {
      * @return An array containing the newly initialised robots
      */
     public ScanRobot[] initScanRobots() {
-        // TODO: H1.1
-        return crash("H1.1 - remove if implemented");
+        ScanRobot[] scanRobots = new ScanRobot[World.getWidth() - 1];
+        for (int i = 0; i < scanRobots.length; i++) {
+            scanRobots[i] = new ScanRobot(i + 1, 0, Direction.UP, 0);
+        }
+        return scanRobots;
     }
 
     /**
@@ -25,8 +30,12 @@ public class ControlCenter {
      * @return An array containing the newly initialised robots
      */
     public CleanRobot[] initCleaningRobots() {
-        // TODO: H1.2
-        return crash("H1.2 - remove if implemented");
+        CleanRobot[] cleanRobots = new CleanRobot[World.getHeight() - 1];
+        for (int i = 0; i < cleanRobots.length; i++) {
+            cleanRobots[i] = new CleanRobot(0, i + 1, Direction.RIGHT, 0);
+        }
+
+        return cleanRobots;
     }
 
     /**
@@ -35,8 +44,12 @@ public class ControlCenter {
      * @param robots The array to invert
      */
     public void reverseRobots(Robot[] robots) {
-        // TODO: H3.1
-        crash("H3.1 - remove if implemented");
+        for (int i = 0; i < robots.length / 2; i++) {
+            Robot tmp = robots[i];
+            robots[i] = robots[robots.length - i - 1];
+            robots[robots.length - i - 1] = tmp;
+
+        }
     }
 
     /**
@@ -45,8 +58,20 @@ public class ControlCenter {
      * @param robots The array of {@linkplain Robot robots} to rotate
      */
     public void rotateRobots(Robot[] robots) {
-        // TODO: H3.2
-        crash("H3.2 - remove if implemented");
+        for (Robot robot : robots) {
+            Direction toDirection;
+            switch (robot.getDirection()) {
+                case UP -> toDirection = Direction.DOWN;
+                case DOWN -> toDirection = Direction.UP;
+                case LEFT -> toDirection = Direction.RIGHT;
+                case RIGHT -> toDirection = Direction.LEFT;
+                default -> throw new IllegalArgumentException("Ups...Something went wrong!");
+            }
+            while (robot.getDirection() != toDirection) {
+                robot.turnLeft();
+            }
+            checkForDamage(robot);
+        }
     }
 
     /**
@@ -68,8 +93,15 @@ public class ControlCenter {
      * @param robots An array possibly containing {@linkplain Robot robots} that are turned off and need to be replaced
      */
     public void replaceBrokenRobots(Robot[] robots) {
-        // TODO: H3.3
-        crash("H3.3 - remove if implemented");
+        for (int i = 0; i < robots.length; i++) {
+            if (robots[i].isTurnedOff()) {
+                if (isScanRobotArray(robots)) {
+                    robots[i] = new ScanRobot(robots[i].getX(), robots[i].getY(), robots[i].getDirection(), robots[i].getNumberOfCoins());
+                } else {
+                    robots[i] = new CleanRobot(robots[i].getX(), robots[i].getY(), robots[i].getDirection(), robots[i].getNumberOfCoins());
+                }
+            }
+        }
     }
 
     /**
@@ -88,8 +120,9 @@ public class ControlCenter {
      * @param robots The array to perform the aforementioned actions on
      */
     public void spinRobots(Robot[] robots) {
-        // TODO: H3.4
-        crash("H3.4 - remove if implemented");
+        reverseRobots(robots);
+        rotateRobots(robots);
+        replaceBrokenRobots(robots);
     }
 
     /**
@@ -98,8 +131,11 @@ public class ControlCenter {
      * @param robots The robots to move
      */
     public void returnRobots(Robot[] robots) {
-        // TODO: H4.1
-        crash("H4.1 - remove if implemented");
+        for (Robot robot : robots) {
+            while (robot.isFrontClear()) {
+                robot.move();
+            }
+        }
     }
 
     /**
@@ -109,8 +145,26 @@ public class ControlCenter {
      * @return An array detailing which world fields contain at least one coin
      */
     public boolean[][] scanWorld(ScanRobot[] scanRobots) {
-        // TODO: H4.2
-        return crash("H4.2 - remove if implemented");
+        boolean[][] coinPositions = new boolean[World.getHeight()][World.getWidth()];
+        boolean reachedtheEnd = false;
+
+        while (!reachedtheEnd) {
+            for (ScanRobot bot : scanRobots) {
+                if (!bot.isFrontClear()) {
+                    reachedtheEnd = true;
+                    break;
+                }
+                bot.move();
+                if (bot.isOnACoin()) {
+                    coinPositions[bot.getY()][bot.getX()] = true;
+                }
+            }
+        }
+        // if the while loop has terminated, the end of the world has been reached, so spin the robots and return
+        spinRobots(scanRobots);
+        returnRobots(scanRobots);
+        spinRobots(scanRobots);
+        return coinPositions;
     }
 
     /**
@@ -120,8 +174,22 @@ public class ControlCenter {
      * @param cleanRobots   An array containing the {@linkplain CleanRobot CleanRobots} to collect the coins with.
      */
     public void moveCleanRobots(CleanRobot[] cleanRobots, boolean[][] coinPositions) {
-        // TODO: H4.3
-        crash("H4.3 - remove if implemented");
+        boolean reachedTheEnd = false;
+        while (!reachedTheEnd) {
+            for (CleanRobot bot : cleanRobots) {
+                if (!bot.isFrontClear()) {
+                    reachedTheEnd = true;
+                    break;
+                }
+                bot.move();
+                if (coinPositions[bot.getY()][bot.getX()]) {
+                    bot.pickCoin();
+                }
+            }
+        }
+        spinRobots(cleanRobots);
+        returnRobots(cleanRobots);
+        spinRobots(cleanRobots);
     }
 
     /**
